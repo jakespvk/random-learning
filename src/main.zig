@@ -2,6 +2,8 @@ const std = @import("std");
 const http = std.http;
 const env_handler = @import("env_handler.zig");
 
+const URL = "https://api.openai.com/v1/chat/completions";
+
 pub fn main() !void {
     var dba = std.heap.DebugAllocator(.{}).init;
     defer _ = dba.deinit();
@@ -10,18 +12,63 @@ pub fn main() !void {
     var env_vars = std.StringHashMap([]const u8).init(allocator);
     defer env_vars.deinit();
 
-    try env_handler.getEnvVars(&env_vars, "/home/jakes/cecs/forfun/zig/gpt_api/.env");
+    try env_handler.getEnvVars(&env_vars, ".env");
 
-    // test OPENAI_API_KEY
-    std.debug.print("{s}\n", .{env_vars.get("OPENAI_API_KEY").?});
+    // test env vars
+    var env_vars_iter = env_vars.iterator();
+    while (env_vars_iter.next()) |kv| {
+        std.debug.print("{s}: {s}\n", .{ kv.key_ptr.*, kv.value_ptr.* });
+    }
 
-    const client = http.Client{
+    const bearer_token = try std.mem.concat(allocator, u8, &[_][]const u8{ "Bearer ", env_vars.get("OPENAI_API_KEY").? });
+    defer allocator.free(bearer_token);
+    std.debug.print("{s}\n", .{bearer_token});
+
+    var client = http.Client{
         .allocator = allocator,
     };
+    defer client.deinit();
 
-    const headers = http.Header{ .name = "headers", .value = "auth" };
+    const uri = try std.Uri.parse(URL);
 
-    _ = client;
-    _ = headers;
-    // client.fetch(request);
+    const headers = http.Client.Request.Headers{
+        .authorization = .{ .override = bearer_token },
+        .content_type = .{ .override = "application/json" },
+    };
+
+    var dyn_response = std.ArrayList(u8).init(allocator);
+    defer dyn_response.deinit();
+
+    const body = try allocator.dupe(u8,
+        \\ {
+        \\      "model": "gpt-4o-mini",
+        \\      "messages": [
+        \\          {
+        \\              "role": "user",
+        \\              "content": [
+        \\                  {
+        \\                      "type": "text",
+        \\                      "text": "Say hi"
+        \\                  }
+        \\              ]
+        \\          }
+        \\      ]
+        \\ }
+    );
+    defer allocator.free(body);
+
+    const request = http.Client.FetchOptions{
+        .location = .{ .uri = uri },
+        .method = .POST,
+        .headers = headers,
+        .response_storage = .{ .dynamic = &dyn_response },
+        .payload = body,
+    };
+
+    const response = try client.fetch(request);
+    std.debug.print("status: {any}\n", .{response.status});
+    for (dyn_response.items) |c| {
+        std.debug.print("{c}", .{c});
+    }
+    std.debug.print("\n", .{});
 }

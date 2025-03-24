@@ -1,7 +1,8 @@
 const std = @import("std");
 
-pub fn getEnvVars(output: *std.StringHashMap([]const u8), env_file_path: []const u8) !void {
-    const file = try std.fs.openFileAbsolute(env_file_path, .{ .mode = .read_only });
+pub fn getEnvVars(output: *std.StringHashMap([]const u8), env_file_relative: []const u8) !void {
+    const dir = std.fs.cwd();
+    const file = try dir.openFile(env_file_relative, .{ .mode = .read_only });
     errdefer file.close();
     defer file.close();
     var buf: [4096]u8 = undefined;
