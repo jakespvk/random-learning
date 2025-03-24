@@ -1,1 +1,4 @@
 .env
+lib/
+zig-out/
+.zig-cache/
