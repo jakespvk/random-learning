@@ -14,5 +14,4 @@ pub fn getEnvVars(output: *std.StringHashMap([]const u8), env_file_relative: []c
             try output.*.put(std.mem.trim(u8, line_split.first(), " "), std.mem.trim(u8, line_split.rest(), " "));
         }
     }
-    // file.close();
 }

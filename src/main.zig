@@ -20,9 +20,10 @@ pub fn main() !void {
         std.debug.print("{s}: {s}\n", .{ kv.key_ptr.*, kv.value_ptr.* });
     }
 
-    const bearer_token = try std.mem.concat(allocator, u8, &[_][]const u8{ "Bearer ", env_vars.get("OPENAI_API_KEY").? });
+    std.debug.print("{s}\n", .{env_vars.get("OPENAI_API_KEY").?});
+    const bearer_token: []u8 = try std.mem.concat(allocator, u8, &[_][]const u8{ "Bearer ", env_vars.getPtr("OPENAI_API_KEY").?.* });
     defer allocator.free(bearer_token);
-    std.debug.print("{s}\n", .{bearer_token});
+    std.debug.print("{s}\n", .{bearer_token[0..]});
 
     var client = http.Client{
         .allocator = allocator,
@@ -32,7 +33,7 @@ pub fn main() !void {
     const uri = try std.Uri.parse(URL);
 
     const headers = http.Client.Request.Headers{
-        .authorization = .{ .override = bearer_token },
+        .authorization = .{ .override = bearer_token[0..] },
         .content_type = .{ .override = "application/json" },
     };
 
