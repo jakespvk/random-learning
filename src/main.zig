@@ -11,8 +11,9 @@ pub fn main() !void {
 
     var env_vars = std.StringHashMap([]const u8).init(allocator);
     defer env_vars.deinit();
+    var buf: [4096]u8 = undefined;
 
-    try env_handler.getEnvVars(&env_vars, ".env");
+    try env_handler.getEnvVars(&env_vars, ".env", &buf);
 
     // test env vars
     var env_vars_iter = env_vars.iterator();
@@ -21,9 +22,13 @@ pub fn main() !void {
     }
 
     std.debug.print("{s}\n", .{env_vars.get("OPENAI_API_KEY").?});
-    const bearer_token: []u8 = try std.mem.concat(allocator, u8, &[_][]const u8{ "Bearer ", env_vars.getPtr("OPENAI_API_KEY").?.* });
+    const token = env_vars.get("OPENAI_API_KEY").?;
+    std.debug.print("{d}, {d}\n", .{ token.len, "Bearer ".len });
+    const bearer_token = std.mem.concat(allocator, u8, &[_][]const u8{ "Bearer ", token }) catch "";
     defer allocator.free(bearer_token);
-    std.debug.print("{s}\n", .{bearer_token[0..]});
+
+    std.debug.print("{s}\n", .{bearer_token});
+    std.debug.print("{d}\n", .{bearer_token.len});
 
     var client = http.Client{
         .allocator = allocator,
